@@ -1,0 +1,1094 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cryptid Quest - Ultimate Realistic Edition</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Plus+Jakarta+Sans:wght@400;600;700&display=swap');
+
+        :root {
+            --bg-dark: #04060b;
+            --text-light: #f1f5f9;
+            --accent-gold: #f59e0b;
+            --accent-green: #10b981;
+            --hud-bg: rgba(8, 12, 22, 0.95);
+            --ui-border: rgba(255, 255, 255, 0.16);
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-light);
+            overflow: hidden;
+            user-select: none;
+            touch-action: none;
+        }
+
+        h1, h2, h3, .cinzel-font {
+            font-family: 'Cinzel', serif;
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.8);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+
+        .glow-gold {
+            text-shadow: 0 0 12px rgba(245, 158, 11, 0.6);
+        }
+        .glow-red {
+            text-shadow: 0 0 12px rgba(239, 68, 68, 0.8);
+        }
+        .panel-glass {
+            background: var(--hud-bg);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--ui-border);
+            box-shadow: 0 20px 30px -10px rgba(0, 0, 0, 0.6), 0 10px 15px -5px rgba(0, 0, 0, 0.4);
+        }
+    </style>
+</head>
+<body class="w-screen h-screen flex flex-col justify-between items-center relative">
+
+    <div id="game-container" class="relative w-full h-full flex flex-col items-center justify-center">
+        <!-- Main Simulation Canvas -->
+        <canvas id="gameCanvas" class="absolute inset-0 w-full h-full cursor-crosshair z-0"></canvas>
+
+        <!-- Top Navigation & Status HUD -->
+        <header class="absolute top-4 left-4 right-4 z-20 flex flex-col md:flex-row justify-between items-center gap-3 pointer-events-none">
+            <!-- Player Status / Tokens -->
+            <div class="panel-glass px-5 py-3 rounded-2xl flex items-center gap-4 pointer-events-auto">
+                <div class="relative w-12 h-12 rounded-xl bg-slate-900 border border-slate-700 flex items-center justify-center overflow-hidden shadow-inner">
+                    <span id="playerAvatarIcon" class="text-2xl">🕵️‍♂️</span>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <span id="playerNameDisplay" class="font-bold cinzel-font text-amber-400 text-lg tracking-wider">Investigator</span>
+                        <span id="playerLevelDisplay" class="text-xs bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-full border border-amber-500/30">Lv. 1</span>
+                    </div>
+                    <div class="text-xs text-slate-400 flex items-center gap-3 mt-0.5">
+                        <span>Tokens: <strong id="tokenCount" class="text-amber-400 font-bold">400 🪙</strong></span>
+                        <span>Evidence: <strong id="evidenceCount" class="text-cyan-400 font-bold">0 pts</strong></span>
+                        <span>Stamina: <strong id="staminaDisplay" class="text-emerald-400 font-bold">100%</strong></span>
+                        <span>Health: <strong id="healthDisplay" class="text-emerald-400 font-bold">100%</strong></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Time of Day & Progress Bar -->
+            <div class="panel-glass px-6 py-3 rounded-2xl flex flex-col items-center gap-1.5 pointer-events-auto min-w-[280px]">
+                <div class="flex justify-between w-full text-xs font-semibold">
+                    <span id="timeLabel" class="text-amber-300 flex items-center gap-1">☀️ <span>Day 1</span></span>
+                    <span id="timePhaseDesc" class="text-slate-200 font-bold">Bright Daylight</span>
+                </div>
+                <div class="w-full bg-slate-900/90 h-3.5 rounded-full overflow-hidden border border-slate-700/80 p-0.5 shadow-inner">
+                    <div id="timeProgressBar" class="h-full bg-gradient-to-r from-amber-400 via-orange-500 to-indigo-600 rounded-full transition-all duration-300" style="width: 25%;"></div>
+                </div>
+            </div>
+
+            <!-- Action Buttons Menu -->
+            <div class="flex items-center gap-2.5 pointer-events-auto">
+                <button onclick="toggleModal('shopModal')" class="panel-glass hover:bg-slate-800/90 text-amber-300 px-4 py-3 rounded-xl font-bold flex items-center gap-2 transition active:scale-95 shadow-lg border-amber-500/30">
+                    <span>🏪</span> <span class="hidden sm:inline">Shops</span>
+                </button>
+                <button onclick="toggleModal('inventoryModal')" class="panel-glass hover:bg-slate-800/90 text-emerald-300 px-4 py-3 rounded-xl font-bold flex items-center gap-2 transition active:scale-95 shadow-lg">
+                    <span>🎒</span> <span class="hidden sm:inline">Gear Bag</span>
+                </button>
+                <button onclick="toggleModal('codexModal')" class="panel-glass hover:bg-slate-800/90 text-purple-300 px-4 py-3 rounded-xl font-bold flex items-center gap-2 transition active:scale-95 shadow-lg">
+                    <span>📖</span> <span class="hidden sm:inline">Codex</span>
+                </button>
+                <button onclick="toggleModal('questModal')" class="panel-glass hover:bg-slate-800/90 text-amber-300 px-3 py-3 rounded-xl font-bold flex items-center gap-2 transition active:scale-95 shadow-lg" title="Quests">
+                    <span>📜</span>
+                </button>
+                <button onclick="toggleModal('customizeModal')" class="panel-glass hover:bg-slate-800/90 text-blue-300 px-3 py-3 rounded-xl font-bold flex items-center gap-2 transition active:scale-95 shadow-lg" title="Customize Character">
+                    <span>⚙️</span>
+                </button>
+            </div>
+        </header>
+
+        <div class="absolute bottom-6 left-6 z-25 pointer-events-auto">
+            <div class="panel-glass p-2.5 rounded-2xl flex flex-col items-center shadow-2xl">
+                <div class="text-[11px] font-bold cinzel-font text-slate-300 mb-1 flex items-center gap-1.5">
+                    <span>🗺️ WORLD RADAR</span>
+                    <span id="currentRegionLabel" class="text-[10px] text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">Oakhaven Outpost</span>
+                </div>
+                <div class="relative w-40 h-40 bg-slate-950 rounded-xl overflow-hidden border border-slate-700/80 shadow-inner">
+                    <canvas id="minimapCanvas" width="160" height="160" class="w-full h-full"></canvas>
+                </div>
+                <div class="text-[10px] text-slate-400 mt-1 flex gap-2">
+                    <span>📍 <span id="coordinatesDisplay">X: 0, Y: 0</span></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Notification Banner -->
+        <div id="notificationBanner" class="absolute top-24 left-1/2 -translate-x-1/2 z-30 pointer-events-none transition-all duration-300 opacity-0 transform -translate-y-4">
+            <div class="panel-glass px-6 py-3 rounded-2xl border-amber-500/50 shadow-2xl flex items-center gap-3">
+                <span id="notificationIcon" class="text-2xl">🚨</span>
+                <div>
+                    <h4 id="notificationTitle" class="font-bold cinzel-font text-amber-300 text-sm">Alert Title</h4>
+                    <p id="notificationText" class="text-xs text-slate-300">Description message goes here...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Shops Modal -->
+    <div id="shopModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden flex items-center justify-center p-4">
+        <div class="panel-glass w-full max-w-4xl max-h-[85vh] rounded-3xl p-6 flex flex-col shadow-2xl border-amber-500/40 overflow-hidden">
+            <div class="flex justify-between items-center pb-4 border-b border-slate-700">
+                <div>
+                    <h2 class="text-2xl font-extrabold cinzel-font text-amber-400 flex items-center gap-2">
+                        <span>🏛️</span> <span id="shopTitleHeader">Town Trade Plaza & Specialty Shops</span>
+                    </h2>
+                    <p class="text-xs text-slate-400 mt-1">Visit specialty storefronts across the towns to upgrade your hunting expedition gear and sell captured cryptids.</p>
+                </div>
+                <button onclick="toggleModal('shopModal')" class="text-slate-400 hover:text-white p-2 rounded-xl bg-slate-800/80 text-lg font-bold">✕</button>
+            </div>
+
+            <!-- Shop Tabs -->
+            <div class="flex gap-2 py-3 border-b border-slate-800 overflow-x-auto">
+                <button onclick="switchShopTab('general')" id="tab-general" class="shop-tab-btn px-4 py-2 rounded-xl text-sm font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 transition">🎒 General Outpost</button>
+                <button onclick="switchShopTab('gear')" id="tab-gear" class="shop-tab-btn px-4 py-2 rounded-xl text-sm font-bold bg-slate-800 text-slate-400 hover:bg-slate-700 transition">🔦 Hardware & Optics</button>
+                <button onclick="switchShopTab('weapons')" id="tab-weapons" class="shop-tab-btn px-4 py-2 rounded-xl text-sm font-bold bg-slate-800 text-slate-400 hover:bg-slate-700 transition">⚡ Traps & Submersible</button>
+                <button onclick="switchShopTab('market')" id="tab-market" class="shop-tab-btn px-4 py-2 rounded-xl text-sm font-bold bg-slate-800 text-slate-400 hover:bg-slate-700 transition">💰 Cryptid Black Market</button>
+            </div>
+
+            <!-- Shop Items Grid -->
+            <div id="shopItemsContainer" class="flex-1 overflow-y-auto py-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Populated via JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Inventory Modal -->
+    <div id="inventoryModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden flex items-center justify-center p-4">
+        <div class="panel-glass w-full max-w-2xl max-h-[80vh] rounded-3xl p-6 flex flex-col shadow-2xl border-emerald-500/40 overflow-hidden">
+            <div class="flex justify-between items-center pb-4 border-b border-slate-700">
+                <h2 class="text-2xl font-extrabold cinzel-font text-emerald-400 flex items-center gap-2">
+                    <span>🎒</span> Investigator Gear Bag & Submersible Status
+                </h2>
+                <button onclick="toggleModal('inventoryModal')" class="text-slate-400 hover:text-white p-2 rounded-xl bg-slate-800/80 text-lg font-bold">✕</button>
+            </div>
+            <div id="inventoryItemsContainer" class="flex-1 overflow-y-auto py-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <!-- Populated via JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Codex Modal -->
+    <div id="codexModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden flex items-center justify-center p-4">
+        <div class="panel-glass w-full max-w-4xl max-h-[85vh] rounded-3xl p-6 flex flex-col shadow-2xl border-purple-500/40 overflow-hidden">
+            <div class="flex justify-between items-center pb-4 border-b border-slate-700">
+                <div>
+                    <h2 class="text-2xl font-extrabold cinzel-font text-purple-400 flex items-center gap-2">
+                        <span>📖</span> Cryptid Codex & Field Notes
+                    </h2>
+                    <p class="text-xs text-slate-400 mt-1">Collect evidence items per cryptid and reach the required level to capture them!</p>
+                </div>
+                <button onclick="toggleModal('codexModal')" class="text-slate-400 hover:text-white p-2 rounded-xl bg-slate-800/80 text-lg font-bold">✕</button>
+            </div>
+            <div id="codexContainer" class="flex-1 overflow-y-auto py-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Populated via JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Customization Modal -->
+    <div id="customizeModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden flex items-center justify-center p-4">
+        <div class="panel-glass w-full max-w-xl max-h-[85vh] rounded-3xl p-6 flex flex-col shadow-2xl border-blue-500/40 overflow-hidden">
+            <div class="flex justify-between items-center pb-4 border-b border-slate-700">
+                <h2 class="text-2xl font-extrabold cinzel-font text-blue-400 flex items-center gap-2">
+                    <span>⚙️</span> Character Customization
+                </h2>
+                <button onclick="toggleModal('customizeModal')" class="text-slate-400 hover:text-white p-2 rounded-xl bg-slate-800/80 text-lg font-bold">✕</button>
+            </div>
+            <div class="flex-1 overflow-y-auto py-4 space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-300 uppercase mb-1">Investigator Name</label>
+                    <input type="text" id="inputPlayerName" value="Investigator" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-amber-400 font-bold">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-300 uppercase mb-2">Block Face Expression</label>
+                    <div class="grid grid-cols-4 gap-3">
+                        <button onclick="setFaceExpression('smile')" class="face-option p-3 rounded-2xl bg-slate-800 border-2 border-slate-700 flex flex-col items-center hover:border-amber-400 transition text-sm font-bold text-amber-300">😊 Smile</button>
+                        <button onclick="setFaceExpression('grin')" class="face-option p-3 rounded-2xl bg-slate-800 border-2 border-slate-700 flex flex-col items-center hover:border-amber-400 transition text-sm font-bold text-amber-300">😁 Grin</button>
+                        <button onclick="setFaceExpression('serious')" class="face-option p-3 rounded-2xl bg-slate-800 border-2 border-slate-700 flex flex-col items-center hover:border-amber-400 transition text-sm font-bold text-amber-300">😐 Serious</button>
+                        <button onclick="setFaceExpression('shocked')" class="face-option p-3 rounded-2xl bg-slate-800 border-2 border-slate-700 flex flex-col items-center hover:border-amber-400 transition text-sm font-bold text-amber-300">😲 Shocked</button>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-300 uppercase mb-2">Jacket & Gear Color</label>
+                    <div class="grid grid-cols-4 gap-3">
+                        <button onclick="setJacketColor('#3b82f6')" class="h-10 rounded-xl bg-blue-500 border border-slate-700 hover:scale-105 transition"></button>
+                        <button onclick="setJacketColor('#10b981')" class="h-10 rounded-xl bg-emerald-500 border border-slate-700 hover:scale-105 transition"></button>
+                        <button onclick="setJacketColor('#ef4444')" class="h-10 rounded-xl bg-red-500 border border-slate-700 hover:scale-105 transition"></button>
+                        <button onclick="setJacketColor('#f59e0b')" class="h-10 rounded-xl bg-amber-500 border border-slate-700 hover:scale-105 transition"></button>
+                    </div>
+                </div>
+                <button onclick="saveCustomization()" class="w-full py-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold rounded-xl shadow-lg transition">Save & Apply Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quests Modal -->
+    <div id="questModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden flex items-center justify-center p-4">
+        <div class="panel-glass w-full max-w-2xl max-h-[85vh] rounded-3xl p-6 flex flex-col shadow-2xl border-amber-500/40 overflow-hidden">
+            <div class="flex justify-between items-center pb-4 border-b border-slate-700">
+                <h2 class="text-2xl font-extrabold cinzel-font text-amber-400 flex items-center gap-2">
+                    <span>📜</span> Town Board & NPC Quests
+                </h2>
+                <button onclick="toggleModal('questModal')" class="text-slate-400 hover:text-white p-2 rounded-xl bg-slate-800/80 text-lg font-bold">✕</button>
+            </div>
+            <div id="questContainer" class="flex-1 overflow-y-auto py-4 space-y-3">
+                <!-- Populated via JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Death / Restart Modal -->
+    <div id="deathModal" class="fixed inset-0 z-60 bg-black/90 backdrop-blur-lg hidden flex items-center justify-center p-4">
+        <div class="panel-glass w-full max-w-md rounded-3xl p-8 flex flex-col items-center text-center shadow-2xl border-red-500/50">
+            <span class="text-6xl mb-3 animate-bounce">💀</span>
+            <h2 class="text-3xl font-extrabold cinzel-font text-red-500 glow-red mb-2">YOU WERE OVERRUN!</h2>
+            <p class="text-sm text-slate-300 mb-6">Cryptids attacked your investigator in the dark wild. Your expedition has ended in defeat.</p>
+            <button onclick="restartGame()" class="w-full py-4 bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white font-bold rounded-2xl shadow-xl transition text-base">🔄 Restart Expedition</button>
+        </div>
+    </div>
+
+    <script>
+        const gameState = {
+            playerName: "Investigator",
+            faceExpression: "smile",
+            jacketColor: "#3b82f6",
+            tokens: 400,
+            evidencePoints: 0,
+            health: 100,
+            stamina: 100,
+            level: 1,
+            x: 0,
+            y: 0,
+            speed: 4.6,
+            timeOfDay: 0.25,
+            dayCount: 1,
+            flashlightLevel: 1,
+            sprintingBoots: false,
+            nightVision: false,
+            reconDrone: false,
+            captureNet: false,
+            submarine: false,
+            trackerCompanion: false,
+            activeTab: 'general',
+            inCave: false,
+            currentCave: null
+        };
+
+        const towns = [
+            { id: 'oakhaven', name: 'Oakhaven Outpost', x: 250, y: 250, radius: 260, desc: 'Cozy settlement nestled in the dense pine forest.' },
+            { id: 'highpeak', name: 'Highpeak Station', x: 2600, y: -2400, radius: 280, desc: 'Mountain trade hub surrounded by snowy alpine peaks.' },
+            { id: 'shadowfen', name: 'Shadowfen Settlement', x: -2500, y: 2500, radius: 280, desc: 'Misty marshland frontier outpost.' },
+            { id: 'lakeside', name: 'Lakeside Port', x: 2200, y: 2200, radius: 280, desc: 'Naval port specializing in aquatic cryptid expeditions.' }
+        ];
+
+        const questsData = [
+            { id: 'q1', title: 'Forest Scavenger', desc: 'Collect 5 evidence clues from the deep pine forest.', targetType: 'evidence', targetCount: 5, current: 0, rewardTokens: 120, rewardExp: 1, completed: false },
+            { id: 'q2', title: 'Night Stalker Threat', desc: 'Survive until nightfall and avoid taking damage from chasing cryptids.', targetType: 'survive_night', targetCount: 1, current: 0, rewardTokens: 180, rewardExp: 2, completed: false },
+            { id: 'q3', title: 'Cryptid Apprentice', desc: 'Reach Investigator Level 2 by completing quests and exploring.', targetType: 'level', targetCount: 2, current: 1, rewardTokens: 300, rewardExp: 2, completed: false }
+        ];
+
+        const caves = [
+            { id: 'sasquatch_den', name: 'Sasquatch Den', x: -1400, y: -1400, biome: 'Forest', cryptidId: 'sasquatch' },
+            { id: 'yeti_cavern', name: 'Yeti Cavern', x: 2200, y: -1800, biome: 'Snowy Peaks', cryptidId: 'yeti' },
+            { id: 'swamp_abyss', name: 'Swamp Abyss', x: -2200, y: 2000, biome: 'Swamp Barrens', cryptidId: 'jerseydevil' },
+            { id: 'badlands_lair', name: 'Badlands Lair', x: 2400, y: 1600, biome: 'Badlands', cryptidId: 'chupacabra' },
+            { id: 'ruins_crypt', name: 'Mothman Crypt', x: -2600, y: -2200, biome: 'Ruins', cryptidId: 'mothman' },
+            { id: 'abyssal_trench', name: 'Abyssal Lake Trench', x: 2200, y: 2200, biome: 'Lakeside Port', cryptidId: 'lakemonster' }
+        ];
+
+        const cryptidsData = [
+            { id: 'sasquatch', name: 'Sasquatch', biome: 'Forest', tokens: 200, requiredLevel: 1, evidenceCollected: 0, captured: false, desc: 'Massive bipedal ape-like cryptid roaming pine woods.', x: -1400, y: -1400 },
+            { id: 'mothman', name: 'Mothman', biome: 'Ruins', tokens: 250, requiredLevel: 2, evidenceCollected: 0, captured: false, desc: 'Winged humanoid with glowing crimson eyes.', x: -2600, y: -2200 },
+            { id: 'chupacabra', name: 'Chupacabra', biome: 'Badlands', tokens: 220, requiredLevel: 2, evidenceCollected: 0, captured: false, desc: 'Agile predator with spine ridges and glowing eyes.', x: 2400, y: 1600 },
+            { id: 'lakemonster', name: 'Nessie / Lake Monster', biome: 'Lakeside', tokens: 350, requiredLevel: 3, evidenceCollected: 0, captured: false, desc: 'Serpentine aquatic beast dwelling in deep dark waters (Requires Submersible).', x: 2200, y: 2200 },
+            { id: 'yeti', name: 'Yeti', biome: 'Snowy Peaks', tokens: 280, requiredLevel: 3, evidenceCollected: 0, captured: false, desc: 'Fierce white-furred giant stalking high altitude blizzards.', x: 2200, y: -1800 },
+            { id: 'jerseydevil', name: 'Jersey Devil', biome: 'Swamp Barrens', tokens: 270, requiredLevel: 3, evidenceCollected: 0, captured: false, desc: 'Winged creature with a horse-like head and horned skull.', x: -2200, y: 2000 }
+        ];
+
+        const shopItems = {
+            general: [
+                { id: 'battery_pack', name: 'Heavy-Duty Battery Pack', cost: 90, desc: 'Extends flashlight runtime and brightness beam.', icon: '🔋', owned: false },
+                { id: 'evidence_scanner', name: 'Advanced EMF Evidence Scanner', cost: 150, desc: 'Detects hidden clues and cryptid traces faster.', icon: '📡', owned: false },
+                { id: 'tracker_companion', name: 'Veteran Tracker Companion', cost: 200, desc: 'Hires an armed tracker companion who follows you and shoots at chasing cryptids!', icon: '🧑‍🌾', owned: false }
+            ],
+            gear: [
+                { id: 'sprint_boots', name: 'All-Terrain Sprint Boots', cost: 180, desc: 'Boosts movement speed significantly across rough terrain.', icon: '👟', owned: false },
+                { id: 'night_vision', name: 'Night-Vision Scope', cost: 240, desc: 'Grants enhanced tactical vision during dark nights.', icon: '🔭', owned: false }
+            ],
+            weapons: [
+                { id: 'recon_drone', name: 'Reconnaissance Scout Drone', cost: 300, desc: 'Deploys an autonomous aerial drone to scout nearby cryptids.', icon: '🛸', owned: false },
+                { id: 'capture_net', name: 'Reinforced Cryptid Capture Net', cost: 350, desc: 'Essential heavy gear required to capture fully investigated cryptids.', icon: '🕸️', owned: false },
+                { id: 'submarine', name: 'Aquatic Explorer Submersible', cost: 600, desc: 'State-of-the-art mini submarine required to access Lake Monster waters.', icon: '🛥️', owned: false }
+            ],
+            market: []
+        };
+
+        const inventoryItems = [
+            { id: 'compass', name: 'Explorer Compass', icon: '🧭', desc: 'Points toward nearest town or cave waypoint.' },
+            { id: 'camera', name: 'Field Camera', icon: '📷', desc: 'Used to record evidence tracks in the wilderness.' }
+        ];
+
+        let activeEvidence = [];
+        let townNpcs = [];
+        let keys = {};
+        let mouseX = window.innerWidth / 2;
+        let mouseY = window.innerHeight / 2;
+        let walkCycle = 0;
+        let headBob = 0;
+        let isSprinting = false;
+
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const minimapCanvas = document.getElementById('minimapCanvas');
+        const minimapCtx = minimapCanvas.getContext('2d');
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // Input Listeners
+        window.addEventListener('keydown', (e) => {
+            keys[e.key.toLowerCase()] = true;
+            if (e.code === 'Space') {
+                checkCaveInteraction();
+            }
+            if (e.shiftKey) {
+                isSprinting = true;
+            }
+        });
+        window.addEventListener('keyup', (e) => {
+            keys[e.key.toLowerCase()] = false;
+            if (!e.shiftKey) {
+                isSprinting = false;
+            }
+        });
+        window.addEventListener('mousemove', (e) => {
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+        });
+
+        function initGame() {
+            for (let i = 0; i < 35; i++) {
+                activeEvidence.push({
+                    x: (Math.random() - 0.5) * 6000,
+                    y: (Math.random() - 0.5) * 6000,
+                    type: ['Footprint', 'Fur Scrap', 'Strange Residue', 'Mystic Audio'][Math.floor(Math.random() * 4)],
+                    collected: false
+                });
+            }
+
+            towns.forEach(t => {
+                for (let i = 0; i < 4; i++) {
+                    townNpcs.push({
+                        name: ['Elder Thomas', 'Scout Miller', 'Merchant Clara', 'Trapper Vance'][i],
+                        x: t.x + (Math.random() - 0.5) * 180,
+                        y: t.y + (Math.random() - 0.5) * 180,
+                        dialogue: 'Welcome to ' + t.name + '! Watch out for cryptids once night falls.'
+                    });
+                }
+            });
+
+            updateUI();
+            requestAnimationFrame(gameLoop);
+        }
+
+        function checkCaveInteraction() {
+            if (gameState.inCave) {
+                gameState.inCave = false;
+                gameState.currentCave = null;
+                showNotification("Exited Cavern", "Returning to surface wilderness.", "🗺️");
+                return;
+            }
+
+            for (let cave of caves) {
+                let dist = Math.hypot(gameState.x - cave.x, gameState.y - cave.y);
+                if (dist < 120) {
+                    gameState.inCave = true;
+                    gameState.currentCave = cave;
+                    gameState.x = cave.x;
+                    gameState.y = cave.y + 50;
+                    showNotification("Entered " + cave.name, "Deep underground cave system. Cryptid lair active!", "🏔️");
+                    break;
+                }
+            }
+        }
+
+        function gameLoop() {
+            update();
+            render();
+            requestAnimationFrame(gameLoop);
+        }
+
+        function update() {
+            gameState.timeOfDay += 0.0003;
+            if (gameState.timeOfDay >= 1) {
+                gameState.timeOfDay = 0;
+                gameState.dayCount++;
+            }
+
+            let moveSpeed = gameState.speed;
+            if (gameState.sprintingBoots) moveSpeed *= 1.35;
+
+            let sprintingActive = isSprinting && gameState.stamina > 5 && (keys['w'] || keys['s'] || keys['a'] || keys['d'] || keys['arrowup'] || keys['arrowdown'] || keys['arrowleft'] || keys['arrowright']);
+            if (sprintingActive) {
+                moveSpeed *= 1.6;
+                gameState.stamina = Math.max(0, gameState.stamina - 0.35);
+            } else {
+                gameState.stamina = Math.min(100, gameState.stamina + 0.2);
+            }
+
+            let dx = 0;
+            let dy = 0;
+            if (keys['w'] || keys['arrowup']) dy -= 1;
+            if (keys['s'] || keys['arrowdown']) dy += 1;
+            if (keys['a'] || keys['arrowleft']) dx -= 1;
+            if (keys['d'] || keys['arrowright']) dx += 1;
+
+            if (dx !== 0 || dy !== 0) {
+                let len = Math.hypot(dx, dy);
+                gameState.x += (dx / len) * moveSpeed;
+                gameState.y += (dy / len) * moveSpeed;
+                walkCycle += sprintingActive ? 0.25 : 0.16;
+                headBob = Math.sin(walkCycle * 2) * 4;
+            } else {
+                walkCycle = 0;
+                headBob = 0;
+            }
+
+            activeEvidence.forEach(ev => {
+                if (!ev.collected && Math.hypot(gameState.x - ev.x, gameState.y - ev.y) < 50) {
+                    ev.collected = true;
+                    gameState.evidencePoints++;
+                    showNotification("Evidence Collected!", "Found " + ev.type + ". Total points: " + gameState.evidencePoints, "🔍");
+                    
+                    questsData.forEach(q => {
+                        if (q.targetType === 'evidence' && !q.completed) {
+                            q.current = Math.min(q.targetCount, q.current + 1);
+                        }
+                    });
+                }
+            });
+
+            let isNight = gameState.timeOfDay > 0.55 && gameState.timeOfDay < 0.95;
+            cryptidsData.forEach(c => {
+                let distToPlayer = Math.hypot(gameState.x - c.x, gameState.y - c.y);
+                if (isNight && !c.captured) {
+                    let angle = Math.atan2(gameState.y - c.y, gameState.x - c.x);
+                    c.x += Math.cos(angle) * 1.7;
+                    c.y += Math.sin(angle) * 1.7;
+
+                    if (distToPlayer < 40) {
+                        gameState.health -= 0.6;
+                        if (gameState.health <= 0) {
+                            triggerDeathModal();
+                        }
+                    }
+                } else if (!isNight) {
+                    let homeCave = caves.find(cv => cv.cryptidId === c.id);
+                    if (homeCave) {
+                        let angle = Math.atan2(homeCave.y - c.y, homeCave.x - c.x);
+                        if (Math.hypot(homeCave.x - c.x, homeCave.y - c.y) > 20) {
+                            c.x += Math.cos(angle) * 1.0;
+                            c.y += Math.sin(angle) * 1.0;
+                        }
+                    }
+                }
+            });
+
+            if (gameState.trackerCompanion) {
+                cryptidsData.forEach(c => {
+                    if (Math.hypot(gameState.x - c.x, gameState.y - c.y) < 320) {
+                        let angle = Math.atan2(gameState.y - c.y, gameState.x - c.x);
+                        c.x -= Math.cos(angle) * 0.9;
+                        c.y -= Math.sin(angle) * 0.9;
+                    }
+                });
+            }
+
+            updateUI();
+        }
+
+        function render() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            let isNight = gameState.timeOfDay > 0.55 && gameState.timeOfDay < 0.95;
+            let dawnDusk = (gameState.timeOfDay > 0.45 && gameState.timeOfDay <= 0.55) || (gameState.timeOfDay >= 0.95 || gameState.timeOfDay <= 0.05);
+
+            if (gameState.inCave) {
+                renderCaveInterior();
+            } else {
+                renderWorldMap(isNight, dawnDusk);
+            }
+        }
+
+        function renderWorldMap(isNight, dawnDusk) {
+            let skyGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            if (isNight) {
+                skyGrad.addColorStop(0, '#020617');
+                skyGrad.addColorStop(1, '#090d16');
+            } else if (dawnDusk) {
+                skyGrad.addColorStop(0, '#7c2d12');
+                skyGrad.addColorStop(1, '#ea580c');
+            } else {
+                skyGrad.addColorStop(0, '#38bdf8');
+                skyGrad.addColorStop(1, '#bae6fd');
+            }
+            ctx.fillStyle = skyGrad;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            let camX = canvas.width / 2 - gameState.x;
+            let camY = canvas.height / 2 - gameState.y;
+
+            ctx.save();
+            ctx.translate(camX, camY);
+
+            ctx.fillStyle = isNight ? '#064e3b' : '#15803d';
+            ctx.beginPath();
+            ctx.arc(0, 0, 3800, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Render environmental pine trees
+            for (let i = -3000; i < 3000; i += 400) {
+                for (let j = -3000; j < 3000; j += 400) {
+                    if (Math.hypot(i, j) > 500) {
+                        ctx.fillStyle = '#14532d';
+                        ctx.beginPath();
+                        ctx.arc(i, j, 35, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.fillStyle = '#052e16';
+                        ctx.beginPath();
+                        ctx.arc(i + 10, j + 10, 20, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+            }
+
+            towns.forEach(t => {
+                ctx.fillStyle = isNight ? '#1e293b' : '#f8fafc';
+                ctx.beginPath();
+                ctx.arc(t.x, t.y, t.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = '#f59e0b';
+                ctx.lineWidth = 4;
+                ctx.stroke();
+
+                ctx.fillStyle = '#92400e';
+                ctx.fillRect(t.x - 80, t.y - 60, 60, 50);
+                ctx.fillRect(t.x + 20, t.y - 60, 60, 50);
+                ctx.fillRect(t.x - 40, t.y + 20, 80, 60);
+
+                ctx.fillStyle = '#f1f5f9';
+                ctx.font = 'bold 16px Cinzel';
+                ctx.textAlign = 'center';
+                ctx.fillText(t.name, t.x, t.y - 80);
+            });
+
+            caves.forEach(cv => {
+                ctx.fillStyle = '#1e293b';
+                ctx.beginPath();
+                ctx.arc(cv.x, cv.y, 75, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = '#64748b';
+                ctx.lineWidth = 5;
+                ctx.stroke();
+
+                ctx.fillStyle = '#020617';
+                ctx.beginPath();
+                ctx.arc(cv.x, cv.y, 48, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = '#38bdf8';
+                ctx.font = 'bold 14px Plus Jakarta Sans';
+                ctx.textAlign = 'center';
+                ctx.fillText(cv.name + ' [Press Space]', cv.x, cv.y - 90);
+            });
+
+            activeEvidence.forEach(ev => {
+                if (!ev.collected) {
+                    ctx.fillStyle = '#38bdf8';
+                    ctx.beginPath();
+                    ctx.arc(ev.x, ev.y, 9, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = '#bae6fd';
+                    ctx.lineWidth = 2.5;
+                    ctx.stroke();
+                }
+            });
+
+            cryptidsData.forEach(c => {
+                if (!c.captured) {
+                    ctx.fillStyle = '#ef4444';
+                    ctx.beginPath();
+                    ctx.arc(c.x, c.y, 26, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = 'bold 13px Plus Jakarta Sans';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(c.name, c.x, c.y - 35);
+                }
+            });
+
+            townNpcs.forEach(n => {
+                ctx.fillStyle = '#3b82f6';
+                ctx.fillRect(n.x - 10, n.y - 20, 20, 30);
+                ctx.fillStyle = '#fbbf24';
+                ctx.font = '11px Plus Jakarta Sans';
+                ctx.textAlign = 'center';
+                ctx.fillText(n.name, n.x, n.y - 28);
+            });
+
+            // Realistic Character Render with Head Bob & Flashlight cone
+            renderAdvancedPlayer(ctx, gameState.x, gameState.y, walkCycle, headBob, isNight);
+
+            if (gameState.trackerCompanion) {
+                ctx.fillStyle = '#10b981';
+                ctx.fillRect(gameState.x + 35, gameState.y + 20, 22, 32);
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '10px Plus Jakarta Sans';
+                ctx.fillText('Tracker Companion', gameState.x + 46, gameState.y + 12);
+            }
+
+            ctx.restore();
+
+            if (isNight && !gameState.nightVision) {
+                let beamGrad = ctx.createRadialGradient(canvas.width / 2, canvas.height / 2, 20, canvas.width / 2, canvas.height / 2, 380 + (gameState.flashlightLevel * 90));
+                beamGrad.addColorStop(0, 'rgba(255, 255, 210, 0.3)');
+                beamGrad.addColorStop(1, 'rgba(0, 0, 0, 0.94)');
+                ctx.fillStyle = beamGrad;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+
+            renderMinimap();
+        }
+
+        function renderCaveInterior() {
+            let bgGrad = ctx.createRadialGradient(canvas.width / 2, canvas.height / 2, 50, canvas.width / 2, canvas.height / 2, canvas.width);
+            bgGrad.addColorStop(0, '#0f172a');
+            bgGrad.addColorStop(1, '#020617');
+            ctx.fillStyle = bgGrad;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            let camX = canvas.width / 2 - gameState.x;
+            let camY = canvas.height / 2 - gameState.y;
+
+            ctx.save();
+            ctx.translate(camX, camY);
+
+            ctx.fillStyle = '#1e293b';
+            ctx.beginPath();
+            ctx.arc(gameState.currentCave.x, gameState.currentCave.y, 850, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#020617';
+            ctx.beginPath();
+            ctx.arc(gameState.currentCave.x, gameState.currentCave.y, 740, 0, Math.PI * 2);
+            ctx.fill();
+
+            let targetCryptid = cryptidsData.find(c => c.id === gameState.currentCave.cryptidId);
+            if (targetCryptid && !targetCryptid.captured) {
+                ctx.fillStyle = '#dc2626';
+                ctx.beginPath();
+                ctx.arc(targetCryptid.x, targetCryptid.y, 38, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#f87171';
+                ctx.font = 'bold 16px Cinzel';
+                ctx.textAlign = 'center';
+                ctx.fillText(targetCryptid.name + ' [LAIR]', targetCryptid.x, targetCryptid.y - 48);
+            }
+
+            renderAdvancedPlayer(ctx, gameState.x, gameState.y, walkCycle, headBob, true);
+
+            ctx.restore();
+        }
+
+        function renderAdvancedPlayer(c, x, y, walk, bob, isNight) {
+            c.save();
+            c.translate(x, y + bob);
+
+            // Realistic shadow
+            c.fillStyle = 'rgba(0, 0, 0, 0.4)';
+            c.beginPath();
+            c.ellipse(0, 26, 16, 8, 0, 0, Math.PI * 2);
+            c.fill();
+
+            // Legs with dynamic walk cycle
+            let legOffset = Math.sin(walk) * 9;
+            c.fillStyle = '#0f172a';
+            c.fillRect(-10, 14 + legOffset, 8, 22);
+            c.fillRect(2, 14 - legOffset, 8, 22);
+
+            // Boots
+            c.fillStyle = '#1e293b';
+            c.fillRect(-12, 32 + legOffset, 10, 6);
+            c.fillRect(2, 32 - legOffset, 10, 6);
+
+            // Torso / Jacket
+            c.fillStyle = gameState.jacketColor;
+            c.fillRect(-15, -12, 30, 30);
+
+            // Jacket zipper detail
+            c.fillStyle = '#0f172a';
+            c.fillRect(-1, -12, 2, 30);
+
+            // Arms holding equipment
+            c.fillStyle = gameState.jacketColor;
+            c.fillRect(-22, -10, 8, 20);
+            c.fillRect(14, -10, 8, 20);
+
+            // Head and Face
+            c.fillStyle = '#fcd34d';
+            c.fillRect(-12, -32 + (bob * 0.2), 24, 22);
+
+            // Cap / Helmet
+            c.fillStyle = '#1e293b';
+            c.fillRect(-14, -36 + (bob * 0.2), 28, 8);
+            c.fillRect(4, -38 + (bob * 0.2), 14, 4); // Visor brim
+
+            // Facial expression eyes & mouth
+            c.fillStyle = '#0f172a';
+            c.fillRect(-6, -25 + (bob * 0.2), 4, 4);
+            c.fillRect(2, -25 + (bob * 0.2), 4, 4);
+
+            if (gameState.faceExpression === 'grin') {
+                c.fillRect(-5, -17 + (bob * 0.2), 10, 3);
+            } else if (gameState.faceExpression === 'serious') {
+                c.fillRect(-5, -16 + (bob * 0.2), 10, 1);
+            } else if (gameState.faceExpression === 'shocked') {
+                c.beginPath();
+                c.arc(0, -16 + (bob * 0.2), 3.5, 0, Math.PI * 2);
+                c.fillStyle = '#0f172a';
+                c.fill();
+            } else {
+                c.beginPath();
+                c.arc(0, -17 + (bob * 0.2), 4.5, 0, Math.PI);
+                c.strokeStyle = '#0f172a';
+                c.lineWidth = 2;
+                c.stroke();
+            }
+
+            // Flashlight equipment mounted on shoulder if night
+            if (isNight) {
+                c.fillStyle = '#cbd5e1';
+                c.fillRect(10, -18, 6, 12);
+                c.fillStyle = '#fbbf24';
+                c.fillRect(14, -16, 4, 4);
+            }
+
+            c.restore();
+        }
+
+        function renderMinimap() {
+            minimapCtx.fillStyle = '#020617';
+            minimapCtx.fillRect(0, 0, minimapCanvas.width, minimapCanvas.height);
+
+            let scale = 160 / 6000;
+            let cx = minimapCanvas.width / 2;
+            let cy = minimapCanvas.height / 2;
+
+            towns.forEach(t => {
+                let tx = cx + (t.x - gameState.x) * scale;
+                let ty = cy + (t.y - gameState.y) * scale;
+                minimapCtx.fillStyle = '#f59e0b';
+                minimapCtx.beginPath();
+                minimapCtx.arc(tx, ty, 5, 0, Math.PI * 2);
+                minimapCtx.fill();
+            });
+
+            caves.forEach(cv => {
+                let cvx = cx + (cv.x - gameState.x) * scale;
+                let cvy = cy + (cv.y - gameState.y) * scale;
+                minimapCtx.fillStyle = '#38bdf8';
+                minimapCtx.fillRect(cvx - 3, cvy - 3, 6, 6);
+            });
+
+            minimapCtx.fillStyle = '#10b981';
+            minimapCtx.beginPath();
+            minimapCtx.arc(cx, cy, 4, 0, Math.PI * 2);
+            minimapCtx.fill();
+        }
+
+        function updateUI() {
+            document.getElementById('playerNameDisplay').innerText = gameState.playerName;
+            document.getElementById('playerLevelDisplay').innerText = 'Lv. ' + gameState.level;
+            document.getElementById('tokenCount').innerText = gameState.tokens + ' 🪙';
+            document.getElementById('evidenceCount').innerText = gameState.evidencePoints + ' pts';
+            document.getElementById('healthDisplay').innerText = Math.round(gameState.health) + '%';
+            document.getElementById('staminaDisplay').innerText = Math.round(gameState.stamina) + '%';
+            document.getElementById('coordinatesDisplay').innerText = 'X: ' + Math.round(gameState.x) + ', Y: ' + Math.round(gameState.y);
+
+            let isNight = gameState.timeOfDay > 0.55 && gameState.timeOfDay < 0.95;
+            let timeLabel = document.getElementById('timeLabel');
+            let timePhaseDesc = document.getElementById('timePhaseDesc');
+            let timeProgressBar = document.getElementById('timeProgressBar');
+
+            timeProgressBar.style.width = (gameState.timeOfDay * 100) + '%';
+            if (isNight) {
+                timeLabel.innerHTML = '🌙 <span>Day ' + gameState.dayCount + '</span>';
+                timePhaseDesc.innerText = 'Dark Night (Cryptids Hunting!)';
+            } else {
+                timeLabel.innerHTML = '☀️ <span>Day ' + gameState.dayCount + '</span>';
+                timePhaseDesc.innerText = 'Bright Daylight';
+            }
+
+            questsData.forEach(q => {
+                if (!q.completed && q.current >= q.targetCount) {
+                    q.completed = true;
+                    gameState.tokens += q.rewardTokens;
+                    gameState.level += q.rewardExp;
+                    showNotification("Quest Completed!", "Reward: " + q.rewardTokens + " Tokens!", "🏆");
+                }
+            });
+        }
+
+        function toggleModal(modalId) {
+            let modal = document.getElementById(modalId);
+            if (modal.classList.contains('hidden')) {
+                modal.classList.remove('hidden');
+                if (modalId === 'shopModal') renderShopItems();
+                if (modalId === 'inventoryModal') renderInventoryItems();
+                if (modalId === 'codexModal') renderCodexItems();
+                if (modalId === 'questModal') renderQuestItems();
+            } else {
+                modal.classList.add('hidden');
+            }
+        }
+
+        function switchShopTab(tab) {
+            gameState.activeTab = tab;
+            document.querySelectorAll('.shop-tab-btn').forEach(btn => {
+                btn.className = 'shop-tab-btn px-4 py-2 rounded-xl text-sm font-bold bg-slate-800 text-slate-400 hover:bg-slate-700 transition';
+            });
+            document.getElementById('tab-' + tab).className = 'shop-tab-btn px-4 py-2 rounded-xl text-sm font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 transition';
+            renderShopItems();
+        }
+
+        function renderShopItems() {
+            let container = document.getElementById('shopItemsContainer');
+            container.innerHTML = '';
+
+            let list = [];
+            if (gameState.activeTab === 'market') {
+                list = cryptidsData.filter(c => c.captured).map(c => ({
+                    id: c.id,
+                    name: 'Sell ' + c.name,
+                    cost: -c.tokens,
+                    desc: 'Sell captured cryptid specimen to the black market.',
+                    icon: '💰',
+                    owned: false,
+                    isSell: true
+                }));
+            } else {
+                list = shopItems[gameState.activeTab];
+            }
+
+            if (list.length === 0) {
+                container.innerHTML = '<div class="col-span-2 text-center text-slate-400 py-8">No items available or no captured cryptids to sell yet!</div>';
+                return;
+            }
+
+            list.forEach(item => {
+                let div = document.createElement('div');
+                div.className = 'panel-glass p-4 rounded-2xl flex items-center justify-between border border-slate-700';
+                div.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <span class="text-3xl">${item.icon}</span>
+                        <div>
+                            <h4 class="font-bold text-amber-300 text-sm">${item.name}</h4>
+                            <p class="text-xs text-slate-400 mt-0.5">${item.desc}</p>
+                        </div>
+                    </div>
+                    <button onclick="buyShopItem('${item.id}', ${item.cost}, ${item.isSell || false})" class="px-4 py-2 rounded-xl font-bold text-xs ${item.isSell ? 'bg-emerald-600 hover:bg-emerald-500 text-white' : (item.owned ? 'bg-slate-800 text-slate-500 cursor-not-allowed' : 'bg-amber-500 hover:bg-amber-400 text-slate-950')} transition">
+                        ${item.isSell ? '+' + Math.abs(item.cost) + ' 🪙' : (item.owned ? 'Owned' : item.cost + ' 🪙')}
+                    </button>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function buyShopItem(id, cost, isSell) {
+            if (isSell) {
+                gameState.tokens += Math.abs(cost);
+                let cIndex = cryptidsData.findIndex(c => c.id === id);
+                if (cIndex !== -1) {
+                    cryptidsData.splice(cIndex, 1);
+                }
+                showNotification("Cryptid Sold!", "Claimed bounty reward tokens.", "🪙");
+                renderShopItems();
+                return;
+            }
+
+            let item = null;
+            ['general', 'gear', 'weapons'].forEach(tab => {
+                let found = shopItems[tab].find(i => i.id === id);
+                if (found) item = found;
+            });
+
+            if (item && !item.owned) {
+                if (gameState.tokens >= cost) {
+                    gameState.tokens -= cost;
+                    item.owned = true;
+
+                    if (id === 'battery_pack') gameState.flashlightLevel++;
+                    if (id === 'sprint_boots') gameState.sprintingBoots = true;
+                    if (id === 'night_vision') gameState.nightVision = true;
+                    if (id === 'recon_drone') gameState.reconDrone = true;
+                    if (id === 'capture_net') gameState.captureNet = true;
+                    if (id === 'submarine') gameState.submarine = true;
+                    if (id === 'tracker_companion') gameState.trackerCompanion = true;
+
+                    showNotification("Purchase Successful!", "Acquired " + item.name, "🛍️");
+                    renderShopItems();
+                } else {
+                    showNotification("Insufficient Tokens!", "You need more tokens to buy this item.", "⚠️");
+                }
+            }
+        }
+
+        function renderInventoryItems() {
+            let container = document.getElementById('inventoryItemsContainer');
+            container.innerHTML = '';
+            inventoryItems.forEach(i => {
+                let div = document.createElement('div');
+                div.className = 'panel-glass p-3 rounded-2xl flex items-center gap-3 border border-slate-700';
+                div.innerHTML = `<span class="text-2xl">${i.icon}</span><div><h4 class="font-bold text-emerald-300 text-xs">${i.name}</h4><p class="text-[11px] text-slate-400">${i.desc}</p></div>`;
+                container.appendChild(div);
+            });
+        }
+
+        function renderCodexItems() {
+            let container = document.getElementById('codexContainer');
+            container.innerHTML = '';
+            cryptidsData.forEach(c => {
+                let div = document.createElement('div');
+                div.className = 'panel-glass p-4 rounded-2xl border border-purple-500/30 flex flex-col justify-between';
+                div.innerHTML = `
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <h4 class="font-bold cinzel-font text-purple-300 text-sm">${c.name}</h4>
+                            <span class="text-[10px] bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded-full">Req. Lv. ${c.requiredLevel}</span>
+                        </div>
+                        <p class="text-xs text-slate-300 mb-2">${c.desc}</p>
+                    </div>
+                    <div class="flex justify-between items-center pt-3 border-t border-slate-800">
+                        <span class="text-xs text-slate-400">Status: <strong class="${c.captured ? 'text-emerald-400' : 'text-amber-400'}">${c.captured ? 'Captured' : 'At Large'}</strong></span>
+                        <button onclick="attemptCapture('${c.id}')" class="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs transition">Capture</button>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function attemptCapture(id) {
+            let c = cryptidsData.find(item => item.id === id);
+            if (!c) return;
+
+            if (!gameState.captureNet) {
+                showNotification("Capture Net Required!", "Purchase a Reinforced Cryptid Capture Net from weapons shops.", "⚠️");
+                return;
+            }
+            if (gameState.level < c.requiredLevel) {
+                showNotification("Level Too Low!", "Reach Investigator Level " + c.requiredLevel + " to capture this cryptid.", "⚠️");
+                return;
+            }
+
+            c.captured = true;
+            gameState.evidencePoints += 5;
+            showNotification("Cryptid Captured!", "Successfully netted " + c.name + " specimen!", "🎉");
+            toggleModal('codexModal');
+        }
+
+        function renderQuestItems() {
+            let container = document.getElementById('questContainer');
+            container.innerHTML = '';
+            questsData.forEach(q => {
+                let div = document.createElement('div');
+                div.className = 'panel-glass p-4 rounded-2xl border border-slate-700 flex justify-between items-center';
+                div.innerHTML = `
+                    <div>
+                        <h4 class="font-bold text-amber-300 text-sm">${q.title}</h4>
+                        <p class="text-xs text-slate-400 mt-0.5">${q.desc}</p>
+                        <div class="text-[11px] text-cyan-400 mt-1">Progress: ${q.current} / ${q.targetCount}</div>
+                    </div>
+                    <div>
+                        <span class="px-3 py-1.5 rounded-xl font-bold text-xs ${q.completed ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-slate-800 text-slate-400'}">${q.completed ? 'Completed' : 'Active'}</span>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function setFaceExpression(expr) {
+            gameState.faceExpression = expr;
+            showNotification("Face Updated", "Expression set to " + expr, "⚙️");
+        }
+
+        function setJacketColor(color) {
+            gameState.jacketColor = color;
+            showNotification("Jacket Updated", "Jacket color customized.", "⚙️");
+        }
+
+        function saveCustomization() {
+            let nameInput = document.getElementById('inputPlayerName').value.trim();
+            if (nameInput) gameState.playerName = nameInput;
+            toggleModal('customizeModal');
+            showNotification("Customization Saved", "Investigator profile updated successfully.", "✨");
+        }
+
+        function triggerDeathModal() {
+            document.getElementById('deathModal').classList.remove('hidden');
+        }
+
+        function restartGame() {
+            gameState.tokens = 400;
+            gameState.health = 100;
+            gameState.stamina = 100;
+            gameState.x = 0;
+            gameState.y = 0;
+            document.getElementById('deathModal').classList.add('hidden');
+        }
+
+        function showNotification(title, text, icon) {
+            let banner = document.getElementById('notificationBanner');
+            document.getElementById('notificationTitle').innerText = title;
+            document.getElementById('notificationText').innerText = text;
+            document.getElementById('notificationIcon').innerText = icon;
+
+            banner.classList.remove('opacity-0', '-translate-y-4');
+            banner.classList.add('opacity-100', 'translate-y-0');
+
+            setTimeout(() => {
+                banner.classList.remove('opacity-100', 'translate-y-0');
+                banner.classList.add('opacity-0', '-translate-y-4');
+            }, 3200);
+        }
+
+        window.onload = function() {
+            initGame();
+        };
+    </script>
+</body>
+</html>
